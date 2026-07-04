@@ -5,7 +5,10 @@
 <body>
 
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
-    <div> <p id="pTag"> debugText </p> </div>
+    <div>
+        <p id="pTag"> debugText </p>
+        <p id="pTag2"></p>  
+    </div>
     <script type = "text/javascript">
     // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
     function vec2(x, y) {
@@ -143,12 +146,12 @@
         var Right = 2;
         var Space = 3;
 
-        function ball_t(position, velocity) {
+        function game_obj_t(position, velocity) {
             this.position = position;
             this.velocity = velocity;
         };
 
-        ball_t.prototype = {};
+        game_obj_t.prototype = {};
 
         var isDown = [];
         var wasDown = [];
@@ -156,7 +159,7 @@
         var gameRunning = 0; // Test variable
         var lastTime = Date.now();
 
-        var posPaddle = new vec2(CanvasWidth / 2, (PaddleHeight / 2) + Border);
+        var paddle = new game_obj_t( new vec2(CanvasWidth / 2, (PaddleHeight / 2) + Border), new vec2(0,0));
 
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
@@ -201,8 +204,9 @@
         function drawPaddle() {
             Ctx.fillStyle = 'rgb(200, 160, 110)';
             // positions are centroids
-            var leftX   = posPaddle.x - (PaddleWidth  / 2);
-            var bottomY = posPaddle.y - (PaddleHeight / 2);
+            var pp = paddle.position;
+            var leftX   = pp.x - (PaddleWidth  / 2);
+            var bottomY = pp.y - (PaddleHeight / 2);
             Ctx.fillRect(leftX, bottomY, PaddleWidth, PaddleHeight);
         }
 
@@ -221,19 +225,39 @@
 
         function updatePaddle(dt) {
             var pDelta = PaddleSpeed * dt;
-            var xDelta = (isDown[Left] ? -pDelta : (isDown[Right] ? +pDelta : 0) );
-            posPaddle.x = posPaddle.x + xDelta;
-            document.getElementById('pTag').innerHTML = "Paddle: X: " + posPaddle.x.toString() + " Y: " + posPaddle.y.toString();
-            if (posPaddle.x > CanvasWidth - (PaddleWidth/2 + Border)) posPaddle.x = CanvasWidth - (PaddleWidth/2 + Border);
-            if (posPaddle.x < PaddleWidth/2                + Border)  posPaddle.x = PaddleWidth/2                + Border;
+            var pp = paddle.position;
+            var pv = paddle.velocity;
+            var xDelta = 0;
+            if (isDown[Left] && !isDown[Right]) {
+                pv.x = -PaddleSpeed;
+                xDelta = -pDelta;
+            } else
+            if (isDown[Right] && !isDown[Left]) {
+                pv.x = +PaddleSpeed;
+                xDelta = +pDelta;
+            } else {
+                pv.x = 0;
+            }
+            pp.x = pp.x + xDelta;
+
+            document.getElementById('pTag').innerHTML = "Paddle: X: " + pp.x.toString() + " Y: " + pp.y.toString();
+            if (pp.x > CanvasWidth - (PaddleWidth/2 + Border)) {
+                pp.x = CanvasWidth - (PaddleWidth/2 + Border);
+                pv.x = 0;
+            }
+            if (pp.x < PaddleWidth/2 + Border) {
+                pp.x = PaddleWidth/2 + Border;
+                pv.x = 0;
+            }
         }
 
         function updateBalls(dt) {
             var ballsToRemove = [];
             var pDelta = BallSpeed * dt;
-            var px0 = (posPaddle.x - PaddleWidth/2);
-            var px1 = (posPaddle.x + PaddleWidth/2);
-            var py1 = (posPaddle.y + PaddleHeight/2);
+            var pp = paddle.position;
+            var px0 = (pp.x - PaddleWidth/2);
+            var px1 = (pp.x + PaddleWidth/2);
+            var py1 = (pp.y + PaddleHeight/2);
 
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
@@ -254,7 +278,14 @@
                 if (by0 <= py1 && by1 > Border) {
                     if (bx0 >= px0 && bx1 < px1) {
                         // direct velocity upwards
-                        ball.velocity.y = Math.abs(ball.velocity.y);
+                        ball.velocity.y = Math.abs(ball.velocity.y) + 0.3 * Math.abs(paddle.velocity.x);
+                        ball.velocity.x = ball.velocity.x + 0.3 * paddle.velocity.x;
+                        ball.velocity = ball.velocity.normalize();
+                        if (paddle.velocity.x != 0) { 
+                             document.getElementById('pTag2').innerHTML = "paddle contributed";
+                        } else {
+                             document.getElementById('pTag2').innerHTML = "";
+                        }
                     }
                 }
                 if (by1 <= Border) {
@@ -273,7 +304,7 @@
                 ball.position.y = nextY0 + BallHeight / 2;
             }
 
-            for(var i = 0; i <ballsToRemove.length; i++) {
+            for(var i = ballsToRemove.length - 1; i >= 0; --i) {
                 var bi = ballsToRemove[i];
                 balls.splice(bi, 1);
             }
@@ -300,9 +331,10 @@
             var dt = now - lastTime;
             // Logic
             if (isDown[Space] && !wasDown[Space]) {
-                balls.push(new ball_t (new vec2(
-                    posPaddle.x + PaddleWidth/2 - BallWidth/2,
-                    posPaddle.y + PaddleHeight + BallHeight
+                var pp = paddle.position;
+                balls.push(new game_obj_t (new vec2(
+                    pp.x + PaddleWidth/2  - BallWidth/2,
+                    pp.y + PaddleHeight/2 - BallHeight/2
                 ), randomUpwardsVecotor()) );
             }
             // simulate
@@ -315,8 +347,8 @@
 
             // update old state for delta
             lastTime = now;
-            for (var i = 0; i < wasDown.length; i++) {
-                wasDown[i] = isDown[i];
+            for (var i = 0; i < Keys.length; i++) {
+                wasDown[Keys[i]] = isDown[Keys[i]];
             }
         }
         setInterval(gameLoop, FrameTime);
