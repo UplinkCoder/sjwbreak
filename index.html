@@ -1,0 +1,283 @@
+<html>
+<head>
+    <title>SJW Break</title>
+</head>
+<body>
+
+    <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
+
+    <script type = "text/javascript">
+    // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
+    function vec2(x, y) {
+        this.x = (x === undefined) ? 0 : x;
+        this.y = (y === undefined) ? 0 : y;
+    }
+
+    vec2.prototype = {
+        set: function(x, y) {
+            this.x = x || 0;
+            this.y = y || 0;
+        },
+
+        clone: function() {
+            return new vec2(this.x, this.y);
+        },
+
+        add: function(vector) {
+            return new vec2(this.x + vector.x, this.y + vector.y);
+        },
+
+        addInPlace: function(vector) {
+            this.x += vector.x;
+            this.y += vector.y;
+        },
+
+
+        subtract: function(vector) {
+            return new vec2(this.x - vector.x, this.y - vector.y);
+        },
+
+        scale: function(scalar) {
+            return new vec2(this.x * scalar, this.y * scalar);
+        },
+
+        dot: function(vector) {
+            return (this.x * vector.x + this.y * vector.y);
+        },
+
+        moveTowards: function(vector, t) {
+            // Linearly interpolates between vectors A and B by t.
+            // t = 0 returns A, t = 1 returns B
+            t = Math.min(t, 1); // still allow negative t
+            var diff = vector.subtract(this);
+            return this.add(diff.scale(t));
+        },
+
+        magnitude: function() {
+            return Math.sqrt(this.magnitudeSqr());
+        },
+
+        magnitudeSqr: function() {
+            return (this.x * this.x + this.y * this.y);
+        },
+
+        distance: function (vector) {
+            return Math.sqrt(this.distanceSqr(vector));
+        },
+
+        distanceSqr: function (vector) {
+            var deltaX = this.x - vector.x;
+            var deltaY = this.y - vector.y;
+            return (deltaX * deltaX + deltaY * deltaY);
+        },
+
+        normalize: function() {
+            var mag = this.magnitude();
+            var vector = this.clone();
+            if(Math.abs(mag) < 1e-9) {
+                vector.x = 0;
+                vector.y = 0;
+            } else {
+                vector.x /= mag;
+                vector.y /= mag;
+            }
+            return vector;
+        },
+
+        angle: function() {
+            return Math.atan2(this.y, this.x);
+        },
+
+        rotate: function(alpha) {
+            var cos = Math.cos(alpha);
+            var sin = Math.sin(alpha);
+            var vector = new vec2();
+            vector.x = this.x * cos - this.y * sin;
+            vector.y = this.x * sin + this.y * cos;
+            return vector;
+        },
+
+        toPrecision: function(precision) {
+            var vector = this.clone();
+            vector.x = vector.x.toFixed(precision);
+            vector.y = vector.y.toFixed(precision);
+            return vector;
+        },
+
+        toString: function () {
+            var vector = this.toPrecision(1);
+            return ("[" + vector.x + "; " + vector.y + "]");
+        }
+    };
+    </script>
+    <script type="text/javascript">
+        var CanvasWidth    = 800;
+        var CanvasHeight   = 600;
+        var Border         = 8;
+        var BallSpeed      = 80;
+        var BallWidth      = 10;
+        var BallHeight     = 10;
+        var PaddleSpeed    = 11;
+        var PaddleWidth    = CanvasWidth * 0.07;
+        var PaddleHeight   = 10;
+        var FrameTime      = 33; //Target ~30 FPS
+
+
+        var Canvas = document.getElementById('game');
+        var Ctx = Canvas.getContext('2d');
+        // switch to right handed coordinates
+        Ctx.translate(0, CanvasHeight);
+        Ctx.scale(1, -1);
+
+        /* this Backround is AI Slop */
+
+        var Gradient = Ctx.createRadialGradient(0, 0, CanvasWidth, CanvasHeight, 1 , 1);
+        Gradient.addColorStop(0,    'rgb(255, 0, 0)');   // Red
+        Gradient.addColorStop(0.16, 'rgb(255, 127, 0)'); // Orange
+        Gradient.addColorStop(0.33, 'rgb(255, 255, 0)'); // Yellow
+        Gradient.addColorStop(0.5,  'rgb(0, 255, 0)');   // Green
+        Gradient.addColorStop(0.7,  'rgb(0, 0, 255)');   // Blue
+        Gradient.addColorStop(0.84, 'rgb(75, 0, 130)');  // Indigo
+        Gradient.addColorStop(1,    'rgb(143, 0, 255)'); // Violet
+
+        /* this Backround is AI Slop */
+
+        var Left  = 1;
+        var Right = 2;
+        var Space = 3;
+
+        function ball_t(position, velocity) {
+            this.position = position;
+            this.velocity = velocity;
+        };
+        
+        ball_t.prototype = {};
+        
+        var isDown = [];
+        var wasDown = [];
+        var balls = [];
+        var gameRunning = 0; // Test variable
+        var lastTime = Date.now();
+        
+        var posPaddle = new vec2(CanvasWidth / 2, 0);
+        
+        var LeftArrow_Key  = 37;
+        var RightArrow_Key = 39;
+        var Space_Key      = 32;
+        var Keys = [Space, Left, Right];
+        
+        for (var i = 0; i < Keys.length; i++) {
+            var key = Keys[i];
+            wasDown[key] = false;
+        }
+        
+        window.onkeydown = function(e) {
+            if (e.keyCode == LeftArrow_Key)
+            {
+                isDown[Left] = true;
+            }
+            if (e.keyCode == RightArrow_Key)
+            {
+                isDown[Right] = true;
+            }
+            if (e.keyCode == Space_Key)
+            {
+                isDown[Space] = true;
+            }
+        }
+        
+        window.onkeyup = function(e) {
+            if (e.keyCode == LeftArrow_Key)
+            {
+                isDown[Left] = false;
+            }
+            if (e.keyCode == RightArrow_Key)
+            {
+                isDown[Right] = false;
+            }
+            if (e.keyCode == Space_Key)
+            {
+                isDown[Space] = false;
+            }
+        }
+
+        function drawPaddle() {
+            Ctx.fillStyle = 'rgb(60, 129, 60)';
+            Ctx.fillRect(posPaddle.x, Border + posPaddle.y, PaddleWidth, PaddleHeight);
+        }
+        
+        function drawBalls() {
+            var ballColor = 'rgb(60, 150, 60)'
+            Ctx.fillStyle = ballColor;
+            for(var i = 0; i < balls.length; i++)
+            {
+                var ball = balls[i];
+                Ctx.fillRect(ball.position.x, ball.position.y, BallWidth, BallHeight);
+            }
+        }
+
+        function updatePaddle(dt) {
+            var pDelta = PaddleSpeed * dt;
+            var xDelta = (isDown[Left] ? -pDelta : (isDown[Right] ? +pDelta : 0) ); 
+            posPaddle.x = posPaddle.x + xDelta;
+            if (posPaddle.x > CanvasWidth - (PaddleWidth + Border)) posPaddle.x = CanvasWidth - (PaddleWidth + Border);
+            if (posPaddle.x < 0                          + Border)  posPaddle.x = 0                          + Border;
+        }
+        
+        function updateBalls(dt) {
+            var pDelta = BallSpeed * dt;
+            for(var i = 0; i < balls.length; i++) {
+                var ball = balls[i];
+                ball.position.addInPlace(ball.velocity.scale(dt));
+            }
+            
+        }
+        
+        function randomUpwardsVecotor() {
+            var sectorAngle = Math.PI / 2.25;
+            var startAngle  = (Math.PI / 2) - sectorAngle;
+            var endAngle    = (Math.PI / 2) + sectorAngle;
+            var randomAngle = startAngle + (Math.random() * (endAngle - startAngle));
+            var ballDirection = new vec2(Math.cos(randomAngle), Math.sin(randomAngle));
+            return ballDirection.normalize();
+        }
+
+        /* this Backround is AI Slop */
+        function drawBackground() {
+            Ctx.fillStyle = Gradient;
+            Ctx.fillRect(0, 0, CanvasWidth, CanvasHeight);
+        }
+        /* this Backround is AI Slop */
+
+        function gameLoop() {
+            // Clear
+            var now = Date.now();
+            var dt = now - lastTime;
+            Ctx.clearRect(0, 0, CanvasWidth, CanvasHeight);
+            // drawBackground
+            drawBackground();
+            // Draw
+            drawPaddle();
+            drawBalls();
+            // Logic
+            if (isDown[Space] && !wasDown[Space]) {
+                balls.push(new ball_t (new vec2(
+                    posPaddle.x + PaddleWidth/2 - BallWidth/2,
+                    posPaddle.y + PaddleHeight + BallHeight
+                ), randomUpwardsVecotor()) );
+            }
+
+            updatePaddle(dt / FrameTime);
+            updateBalls (dt / FrameTime);
+            // update old state for delta
+            lastTime = now;
+            for (var i = 0; i < wasDown.length; i++) {
+                wasDown[i] = isDown[i];
+            } 
+        }
+
+        setInterval(gameLoop, FrameTime);
+    </script>
+
+</body>
+</html>
