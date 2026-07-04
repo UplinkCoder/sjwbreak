@@ -5,7 +5,7 @@
 <body>
 
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
-
+    <div> <p id="pTag"> debugText </p> </div>
     <script type = "text/javascript">
     // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
     function vec2(x, y) {
@@ -117,8 +117,8 @@
         var BallSpeed      = 8;
         var BallWidth      = 10;
         var BallHeight     = 10;
-        var PaddleSpeed    = 11;
-        var PaddleWidth    = CanvasWidth * 0.07;
+        var PaddleSpeed    = 15;
+        var PaddleWidth    = CanvasWidth * 0.1;
         var PaddleHeight   = 10;
         var FrameTime      = 33; //Target ~30 FPS
 
@@ -147,27 +147,27 @@
             this.position = position;
             this.velocity = velocity;
         };
-        
+
         ball_t.prototype = {};
-        
+
         var isDown = [];
         var wasDown = [];
         var balls = [];
         var gameRunning = 0; // Test variable
         var lastTime = Date.now();
-        
-        var posPaddle = new vec2(CanvasWidth / 2, 0);
-        
+
+        var posPaddle = new vec2(CanvasWidth / 2, (PaddleHeight / 2) + Border);
+
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
         var Space_Key      = 32;
         var Keys = [Space, Left, Right];
-        
+
         for (var i = 0; i < Keys.length; i++) {
             var key = Keys[i];
             wasDown[key] = false;
         }
-        
+
         window.onkeydown = function(e) {
             if (e.keyCode == LeftArrow_Key)
             {
@@ -182,7 +182,7 @@
                 isDown[Space] = true;
             }
         }
-        
+
         window.onkeyup = function(e) {
             if (e.keyCode == LeftArrow_Key)
             {
@@ -199,62 +199,80 @@
         }
 
         function drawPaddle() {
-            Ctx.fillStyle = 'rgb(90, 160, 110)';
-            Ctx.fillRect(posPaddle.x, Border + posPaddle.y, PaddleWidth, PaddleHeight);
+            Ctx.fillStyle = 'rgb(200, 160, 110)';
+            // positions are centroids
+            var leftX   = posPaddle.x - (PaddleWidth  / 2);
+            var bottomY = posPaddle.y - (PaddleHeight / 2);
+            Ctx.fillRect(leftX, bottomY, PaddleWidth, PaddleHeight);
         }
-        
+
         function drawBalls() {
             var ballColor = 'rgb(100, 180, 120)';
             Ctx.fillStyle = ballColor;
             for(var i = 0; i < balls.length; i++)
             {
                 var ball = balls[i];
-                Ctx.fillRect(ball.position.x, ball.position.y, BallWidth, BallHeight);
+                var posBall = ball.position;
+                var leftX   = posBall.x - (BallWidth  / 2);
+                var bottomY = posBall.y - (BallHeight / 2);
+                Ctx.fillRect(leftX, bottomY, BallWidth, BallHeight);
             }
         }
 
         function updatePaddle(dt) {
             var pDelta = PaddleSpeed * dt;
-            var xDelta = (isDown[Left] ? -pDelta : (isDown[Right] ? +pDelta : 0) ); 
+            var xDelta = (isDown[Left] ? -pDelta : (isDown[Right] ? +pDelta : 0) );
             posPaddle.x = posPaddle.x + xDelta;
-            if (posPaddle.x > CanvasWidth - (PaddleWidth + Border)) posPaddle.x = CanvasWidth - (PaddleWidth + Border);
-            if (posPaddle.x < 0                          + Border)  posPaddle.x = 0                          + Border;
+            document.getElementById('pTag').innerHTML = "Paddle: X: " + posPaddle.x.toString() + " Y: " + posPaddle.y.toString();
+            if (posPaddle.x > CanvasWidth - (PaddleWidth/2 + Border)) posPaddle.x = CanvasWidth - (PaddleWidth/2 + Border);
+            if (posPaddle.x < PaddleWidth/2                + Border)  posPaddle.x = PaddleWidth/2                + Border;
         }
-        
+
         function updateBalls(dt) {
             var ballsToRemove = [];
             var pDelta = BallSpeed * dt;
+            var px0 = (posPaddle.x - PaddleWidth/2);
+            var px1 = (posPaddle.x + PaddleWidth/2);
+            var py1 = (posPaddle.y + PaddleHeight/2);
+
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                var bx0 = ball.position.x; 
-                var by0 = ball.position.y;
-                var bx1 = bx0 + (ball.velocity.x * pDelta); 
-                var by1 = by0 + (ball.velocity.y * pDelta);
-                
-                ball.position.x = bx1;
-                ball.position.y = by1;
-                if (bx1 <= Border || bx1 >= (CanvasWidth - Border))
-                {
-                    ball.velocity.x = -ball.velocity.x;
+                var bx0 = ball.position.x - BallWidth / 2;
+                var bx1 = bx0 + BallWidth;
+                var by0 = ball.position.y - BallHeight / 2;
+                var by1 = by0 + BallHeight;
+
+                if (bx1 <= Border) {
+                    ball.velocity.x = Math.abs(ball.velocity.x);
                 }
-                if (by1 >= (CanvasHeight - Border))
-                {
-                    ball.velocity.y = -ball.velocity.y;
+                if (bx1 >= (CanvasWidth - Border)) {
+                    ball.velocity.x = -Math.abs(ball.velocity.x)
                 }
-                if (by1 - BallWidth < PaddleHeight && by1 >= Border)
-                {
-                    if (bx1 >= posPaddle.x && bx1 < (posPaddle.x + PaddleWidth))
-                    {
-                        ball.velocity.y = -ball.velocity.y;
-                        ball.velocity.x = -ball.velocity.x;
-                    }
-                    else
-                    {
-                        ballsToRemove.push(i);
+                if (by1 >= (CanvasHeight - Border)) {
+                    ball.velocity.y = -Math.abs(ball.velocity.y);
+                }
+                if (by0 <= py1 && by1 > Border) {
+                    if (bx0 >= px0 && bx1 < px1) {
+                        // direct velocity upwards
+                        ball.velocity.y = Math.abs(ball.velocity.y);
                     }
                 }
+                if (by1 <= Border) {
+                    ballsToRemove.push(i);
+                }
+
+                var xDelta = (ball.velocity.x * pDelta);
+                var yDelta = (ball.velocity.y * pDelta);
+
+                var nextX0 = bx0 + xDelta;
+                var nextY0 = by0 + yDelta;
+                var nextX1 = nextX0 + BallWidth;
+                var nextY1 = nextY0 + BallHeight;
+
+                ball.position.x = nextX0 + BallWidth / 2;
+                ball.position.y = nextY0 + BallHeight / 2;
             }
-            
+
             for(var i = 0; i <ballsToRemove.length; i++) {
                 var bi = ballsToRemove[i];
                 balls.splice(bi, 1);
@@ -290,8 +308,6 @@
             // simulate
             updatePaddle(dt / FrameTime);
             updateBalls (dt / FrameTime);
-            // clear
-            Ctx.clearRect(0, 0, CanvasWidth, CanvasHeight);
             // draw
             drawBackground();
             drawPaddle();
