@@ -132,12 +132,9 @@
         /* this Backround is AI Slop */
 
         var Gradient = Ctx.createRadialGradient(0, 0, CanvasWidth, CanvasHeight, 1 , 1);
-        Gradient.addColorStop(0,    'rgb(255, 0, 0)');   // Red
-        Gradient.addColorStop(0.16, 'rgb(255, 127, 0)'); // Orange
-        Gradient.addColorStop(0.33, 'rgb(255, 255, 0)'); // Yellow
-        Gradient.addColorStop(0.5,  'rgb(0, 255, 0)');   // Green
-        Gradient.addColorStop(0.7,  'rgb(0, 0, 255)');   // Blue
-        Gradient.addColorStop(0.84, 'rgb(75, 0, 130)');  // Indigo
+        Gradient.addColorStop(0,    'rgb(60, 0, 120)');   // Red
+        Gradient.addColorStop(0.1,  'rgb(0, 0, 255)');   // Blue
+        Gradient.addColorStop(0.9, 'rgb(75, 0, 130)');  // Indigo
         Gradient.addColorStop(1,    'rgb(143, 0, 255)'); // Violet
 
         /* this Backround is AI Slop */
@@ -202,12 +199,12 @@
         }
 
         function drawPaddle() {
-            Ctx.fillStyle = 'rgb(60, 129, 60)';
+            Ctx.fillStyle = 'rgb(90, 160, 110)';
             Ctx.fillRect(posPaddle.x, Border + posPaddle.y, PaddleWidth, PaddleHeight);
         }
         
         function drawBalls() {
-            var ballColor = 'rgb(60, 150, 60)'
+            var ballColor = 'rgb(100, 180, 120)';
             Ctx.fillStyle = ballColor;
             for(var i = 0; i < balls.length; i++)
             {
@@ -225,32 +222,42 @@
         }
         
         function updateBalls(dt) {
+            var ballsToRemove = [];
             var pDelta = BallSpeed * dt;
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                var bx = ball.position.x; 
-                var by = ball.position.y
-                if (bx <= Border || bx >= (CanvasWidth - Border))
+                var bx0 = ball.position.x; 
+                var by0 = ball.position.y;
+                var bx1 = bx0 + (ball.velocity.x * pDelta); 
+                var by1 = by0 + (ball.velocity.y * pDelta);
+                
+                ball.position.x = bx1;
+                ball.position.y = by1;
+                if (bx1 <= Border || bx1 >= (CanvasWidth - Border))
                 {
                     ball.velocity.x = -ball.velocity.x;
                 }
-                if (ball.position.y >= (CanvasHeight - Border))
+                if (by1 >= (CanvasHeight - Border))
                 {
                     ball.velocity.y = -ball.velocity.y;
                 }
-                if (by - BallWidth < PaddleHeight && by >= Border)
+                if (by1 - BallWidth < PaddleHeight && by1 >= Border)
                 {
-                    if (bx >= posPaddle.x && bx < (posPaddle.x + PaddleWidth))
+                    if (bx1 >= posPaddle.x && bx1 < (posPaddle.x + PaddleWidth))
                     {
                         ball.velocity.y = -ball.velocity.y;
                         ball.velocity.x = -ball.velocity.x;
                     }
                     else
                     {
-                        balls.splice(i, 1);
+                        ballsToRemove.push(i);
                     }
                 }
-                ball.position.addInPlace(ball.velocity.scale(pDelta));
+            }
+            
+            for(var i = 0; i <ballsToRemove.length; i++) {
+                var bi = ballsToRemove[i];
+                balls.splice(bi, 1);
             }
         }
 
@@ -294,7 +301,7 @@
             lastTime = now;
             for (var i = 0; i < wasDown.length; i++) {
                 wasDown[i] = isDown[i];
-            } 
+            }
         }
         setInterval(gameLoop, FrameTime);
     </script>
