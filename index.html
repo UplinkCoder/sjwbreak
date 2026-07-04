@@ -114,7 +114,7 @@
         var CanvasWidth    = 800;
         var CanvasHeight   = 600;
         var Border         = 8;
-        var BallSpeed      = 80;
+        var BallSpeed      = 8;
         var BallWidth      = 10;
         var BallHeight     = 10;
         var PaddleSpeed    = 11;
@@ -228,11 +228,32 @@
             var pDelta = BallSpeed * dt;
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                ball.position.addInPlace(ball.velocity.scale(dt));
+                var bx = ball.position.x; 
+                var by = ball.position.y
+                if (bx <= Border || bx >= (CanvasWidth - Border))
+                {
+                    ball.velocity.x = -ball.velocity.x;
+                }
+                if (ball.position.y >= (CanvasHeight - Border))
+                {
+                    ball.velocity.y = -ball.velocity.y;
+                }
+                if (by - BallWidth < PaddleHeight && by >= Border)
+                {
+                    if (bx >= posPaddle.x && bx < (posPaddle.x + PaddleWidth))
+                    {
+                        ball.velocity.y = -ball.velocity.y;
+                        ball.velocity.x = -ball.velocity.x;
+                    }
+                    else
+                    {
+                        balls.splice(i, 1);
+                    }
+                }
+                ball.position.addInPlace(ball.velocity.scale(pDelta));
             }
-            
         }
-        
+
         function randomUpwardsVecotor() {
             var sectorAngle = Math.PI / 2.25;
             var startAngle  = (Math.PI / 2) - sectorAngle;
@@ -250,15 +271,8 @@
         /* this Backround is AI Slop */
 
         function gameLoop() {
-            // Clear
             var now = Date.now();
             var dt = now - lastTime;
-            Ctx.clearRect(0, 0, CanvasWidth, CanvasHeight);
-            // drawBackground
-            drawBackground();
-            // Draw
-            drawPaddle();
-            drawBalls();
             // Logic
             if (isDown[Space] && !wasDown[Space]) {
                 balls.push(new ball_t (new vec2(
@@ -266,16 +280,22 @@
                     posPaddle.y + PaddleHeight + BallHeight
                 ), randomUpwardsVecotor()) );
             }
-
+            // simulate
             updatePaddle(dt / FrameTime);
             updateBalls (dt / FrameTime);
+            // clear
+            Ctx.clearRect(0, 0, CanvasWidth, CanvasHeight);
+            // draw
+            drawBackground();
+            drawPaddle();
+            drawBalls();
+
             // update old state for delta
             lastTime = now;
             for (var i = 0; i < wasDown.length; i++) {
                 wasDown[i] = isDown[i];
             } 
         }
-
         setInterval(gameLoop, FrameTime);
     </script>
 
