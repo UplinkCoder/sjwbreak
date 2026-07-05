@@ -6,7 +6,7 @@
 
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
-        <p> Art by <a href="www.kenny.nl">Kenny.nl</a></p>
+        <p> Art by <a href="https://www.kenney.nl">Kenney.nl</a></p>
         <p id="pTag"></p>
         <p id="pTag2"></p>
     </div>
@@ -57,7 +57,7 @@
         var BallWidth      = 10;
         var BallHeight     = 10;
 
-        var BrickWidth     = 20;
+        var BrickWidth     = 40;
         var BrickHeight    = 15;
         
         var PaddleSpeed    = 15;
@@ -135,6 +135,22 @@
                 );
             }
         };
+
+        var ProtoBrick = {
+            size: new vec2(BrickWidth, BrickHeight),
+            velocity: new vec2(0, 0),
+            imageOrColorString: "rgb(200, 60, 30)",
+
+            newBrick: function (position) {
+                return new game_obj_t(
+                    position,
+                    velocity,
+                    this.size,
+                    this.imageOrColorString
+                );
+            }
+        };
+
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
         var Space_Key      = 32;
@@ -145,8 +161,13 @@
             wasDown[key] = false;
         }
 
-        function addBrick (row, col) {
-            
+        function addBrick () {
+            var y = 450;
+            var xs = [60, 120, 180];
+            for(int i = 0; i < xs.length; i++)
+            {
+                bricks.push(ProtoBrick.newBrick(new vec2(y, xs[i])));
+            }
         }
 
         window.onkeydown = function(e) {
