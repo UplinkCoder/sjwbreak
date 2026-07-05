@@ -105,10 +105,14 @@
         };
 
         game_obj_t.prototype = {
-            clone: function() {
-                return new vec2(this.x, this.y);
-            },
-
+            clone: function () {
+                return new game_obj_t(
+                    this.position.clone(),
+                    this.velocity.clone(),
+                    this.size.clone(),
+                    this.imageOrColorString
+                );
+            }
         };
 
         var isDown = [];
@@ -148,7 +152,7 @@
             newBrick: function (position) {
                 return new game_obj_t(
                     position,
-                    velocity,
+                    this.velocity,
                     this.size,
                     this.imageOrColorString
                 );
@@ -241,10 +245,12 @@
         function getBounds(gameObj) {
             var halfWidth  = gameObj.size.x / 2;
             var halfHeight = gameObj.size.y / 2;
-            return { x0 : gameObj.position.x - halfWidth,
-                  x1 : gameObj.position.x + halfWidth,
-                  y0 : gameObj.position.y - halfHeight,
-                  y1 : gameObj.position.y + halfHeight };
+            return {
+                x0 : gameObj.position.x - halfWidth,
+                x1 : gameObj.position.x + halfWidth,
+                y0 : gameObj.position.y - halfHeight,
+                y1 : gameObj.position.y + halfHeight
+            };
         }
 
         function updatePaddle() {
@@ -300,11 +306,6 @@
                         ball.velocity.y = Math.abs(ball.velocity.y) + 0.3 * Math.abs(paddle.velocity.x);
                         ball.velocity.x = ball.velocity.x + 0.3 * paddle.velocity.x;
                         ball.velocity = ball.velocity.normalize();
-                        if (paddle.velocity.x != 0) { 
-                             pTag2("paddle contributed");
-                        } else {
-                             pTag2("");
-                        }
                     }
                 }
                 // if ball y1 position is under border destroy
