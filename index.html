@@ -6,8 +6,9 @@
 
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
-        <p id="pTag"> debugText </p>
-        <p id="pTag2"></p>  
+        <p> Art by <a href="www.kenny.nl">Kenny.nl</a></p>
+        <p id="pTag"></p>
+        <p id="pTag2"></p>
     </div>
     <script type = "text/javascript">
     // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
@@ -17,11 +18,6 @@
     }
 
     vec2.prototype = {
-        set: function(x, y) {
-            this.x = x || 0;
-            this.y = y || 0;
-        },
-
         clone: function() {
             return new vec2(this.x, this.y);
         },
@@ -30,48 +26,8 @@
             return new vec2(this.x + vector.x, this.y + vector.y);
         },
 
-        addInPlace: function(vector) {
-            this.x += vector.x;
-            this.y += vector.y;
-        },
-
-
-        subtract: function(vector) {
-            return new vec2(this.x - vector.x, this.y - vector.y);
-        },
-
-        scale: function(scalar) {
-            return new vec2(this.x * scalar, this.y * scalar);
-        },
-
-        dot: function(vector) {
-            return (this.x * vector.x + this.y * vector.y);
-        },
-
-        moveTowards: function(vector, t) {
-            // Linearly interpolates between vectors A and B by t.
-            // t = 0 returns A, t = 1 returns B
-            t = Math.min(t, 1); // still allow negative t
-            var diff = vector.subtract(this);
-            return this.add(diff.scale(t));
-        },
-
         magnitude: function() {
-            return Math.sqrt(this.magnitudeSqr());
-        },
-
-        magnitudeSqr: function() {
-            return (this.x * this.x + this.y * this.y);
-        },
-
-        distance: function (vector) {
-            return Math.sqrt(this.distanceSqr(vector));
-        },
-
-        distanceSqr: function (vector) {
-            var deltaX = this.x - vector.x;
-            var deltaY = this.y - vector.y;
-            return (deltaX * deltaX + deltaY * deltaY);
+            return Math.sqrt(this.x * this.x + this.y * this.y);
         },
 
         normalize: function() {
@@ -84,26 +40,6 @@
                 vector.x /= mag;
                 vector.y /= mag;
             }
-            return vector;
-        },
-
-        angle: function() {
-            return Math.atan2(this.y, this.x);
-        },
-
-        rotate: function(alpha) {
-            var cos = Math.cos(alpha);
-            var sin = Math.sin(alpha);
-            var vector = new vec2();
-            vector.x = this.x * cos - this.y * sin;
-            vector.y = this.x * sin + this.y * cos;
-            return vector;
-        },
-
-        toPrecision: function(precision) {
-            var vector = this.clone();
-            vector.x = vector.x.toFixed(precision);
-            vector.y = vector.y.toFixed(precision);
             return vector;
         },
 
@@ -120,14 +56,25 @@
         var BallSpeed      = 8;
         var BallWidth      = 10;
         var BallHeight     = 10;
+
+        var BrickWidth     = 20;
+        var BrickHeight    = 15;
+        
         var PaddleSpeed    = 15;
         var PaddleWidth    = CanvasWidth * 0.1;
         var PaddleHeight   = 10;
         var FrameTime      = 33; //Target ~30 FPS
 
+        var BallImage   = new Image();
+        var PaddleImage = new Image();
+        BallImage.src   = "png/ballGrey.png";
+        PaddleImage.src = "png/paddleBlu.png";
 
         var Canvas = document.getElementById('game');
         var Ctx = Canvas.getContext('2d');
+        function pTag2(content) {
+            document.getElementById('pTag2').innerHTML = content;
+        }
         // switch to right handed coordinates
         Ctx.translate(0, CanvasHeight);
         Ctx.scale(1, -1);
@@ -135,9 +82,9 @@
         /* this Backround is AI Slop */
 
         var Gradient = Ctx.createRadialGradient(0, 0, CanvasWidth, CanvasHeight, 1 , 1);
-        Gradient.addColorStop(0,    'rgb(60, 0, 120)');   // Red
-        Gradient.addColorStop(0.1,  'rgb(0, 0, 255)');   // Blue
-        Gradient.addColorStop(0.9, 'rgb(75, 0, 130)');  // Indigo
+        Gradient.addColorStop(0,    'rgb(60,  0, 120)'); // Red
+        Gradient.addColorStop(0.1,  'rgb(0,   0, 255)'); // Blue
+        Gradient.addColorStop(0.9,  'rgb(75,  0, 130)'); // Indigo
         Gradient.addColorStop(1,    'rgb(143, 0, 255)'); // Violet
 
         /* this Backround is AI Slop */
@@ -156,8 +103,10 @@
         var isDown = [];
         var wasDown = [];
         var balls = [];
+        var bricks = [];
         var gameRunning = 0; // Test variable
         var lastTime = Date.now();
+        var dt = 0;
 
         var paddle = new game_obj_t( new vec2(CanvasWidth / 2, (PaddleHeight / 2) + Border), new vec2(0,0));
 
@@ -169,6 +118,10 @@
         for (var i = 0; i < Keys.length; i++) {
             var key = Keys[i];
             wasDown[key] = false;
+        }
+
+        function addBrick (row, col) {
+            
         }
 
         window.onkeydown = function(e) {
@@ -207,7 +160,8 @@
             var pp = paddle.position;
             var leftX   = pp.x - (PaddleWidth  / 2);
             var bottomY = pp.y - (PaddleHeight / 2);
-            Ctx.fillRect(leftX, bottomY, PaddleWidth, PaddleHeight);
+            Ctx.drawImage(PaddleImage, leftX, bottomY, PaddleWidth, PaddleHeight);
+            // Ctx.fillRect(leftX, bottomY, PaddleWidth, PaddleHeight);
         }
 
         function drawBalls() {
@@ -219,14 +173,25 @@
                 var posBall = ball.position;
                 var leftX   = posBall.x - (BallWidth  / 2);
                 var bottomY = posBall.y - (BallHeight / 2);
-                Ctx.fillRect(leftX, bottomY, BallWidth, BallHeight);
+                Ctx.drawImage(BallImage, leftX, bottomY, BallWidth, BallHeight);   
+                 //Ctx.fillRect(leftX, bottomY, BallWidth, BallHeight);
             }
         }
 
-        function updatePaddle(dt) {
-            var pDelta = PaddleSpeed * dt;
+        function getBounds(gameObj, width, height) {
+            var halfWidth = width/2;
+            var halfHeight = height/2;
+            return { x0 : gameObj.position.x - halfWidth,
+                  x1 : gameObj.position.x + halfWidth,
+                  y0 : gameObj.position.y - halfHeight,
+                  y1 : gameObj.position.y + halfHeight };
+        }
+
+        function updatePaddle() {
             var pp = paddle.position;
             var pv = paddle.velocity;
+            var pDelta = Math.floor(PaddleSpeed * dt);
+
             var xDelta = 0;
             if (isDown[Left] && !isDown[Right]) {
                 pv.x = -PaddleSpeed;
@@ -251,57 +216,46 @@
             }
         }
 
-        function updateBalls(dt) {
+        function updateBalls() {
             var ballsToRemove = [];
-            var pDelta = BallSpeed * dt;
-            var pp = paddle.position;
-            var px0 = (pp.x - PaddleWidth/2);
-            var px1 = (pp.x + PaddleWidth/2);
-            var py1 = (pp.y + PaddleHeight/2);
+            var pb = getBounds(paddle, PaddleWidth, PaddleHeight);
 
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                var bx0 = ball.position.x - BallWidth / 2;
-                var bx1 = bx0 + BallWidth;
-                var by0 = ball.position.y - BallHeight / 2;
-                var by1 = by0 + BallHeight;
-
-                if (bx0 <= Border) {
+                var bb = getBounds(ball, BallWidth, BallHeight);
+        
+                if (bb.x0 <= Border) {
                     ball.velocity.x = Math.abs(ball.velocity.x);
                 }
-                if (bx1 >= (CanvasWidth - Border)) {
+                if (bb.x1 >= (CanvasWidth - Border)) {
                     ball.velocity.x = -Math.abs(ball.velocity.x)
                 }
-                if (by1 >= (CanvasHeight - Border)) {
+                if (bb.y1 >= (CanvasHeight - Border)) {
                     ball.velocity.y = -Math.abs(ball.velocity.y);
                 }
-                if (by0 <= py1 && by1 > Border) {
-                    if (bx0 >= px0 && bx1 < px1) {
+                if (bb.y0 <= pb.y1 && bb.y1 > Border) {
+                    if (bb.x0 >= pb.x0 && bb.x1 <= pb.x1) {
                         // direct velocity upwards
                         ball.velocity.y = Math.abs(ball.velocity.y) + 0.3 * Math.abs(paddle.velocity.x);
                         ball.velocity.x = ball.velocity.x + 0.3 * paddle.velocity.x;
                         ball.velocity = ball.velocity.normalize();
                         if (paddle.velocity.x != 0) { 
-                             document.getElementById('pTag2').innerHTML = "paddle contributed";
+                             pTag2("paddle contributed");
                         } else {
-                             document.getElementById('pTag2').innerHTML = "";
+                             pTag2("");
                         }
                     }
                 }
-                if (by1 <= Border) {
+                // if ball y1 position is under border destroy
+                if (bb.y1 <= Border) {
                     ballsToRemove.push(i);
                 }
+                var bDelta = BallSpeed * dt;
+                var xDelta = ball.velocity.x * bDelta;
+                var yDelta = ball.velocity.y * bDelta;
 
-                var xDelta = (ball.velocity.x * pDelta);
-                var yDelta = (ball.velocity.y * pDelta);
-
-                var nextX0 = bx0 + xDelta;
-                var nextY0 = by0 + yDelta;
-                var nextX1 = nextX0 + BallWidth;
-                var nextY1 = nextY0 + BallHeight;
-
-                ball.position.x = nextX0 + BallWidth / 2;
-                ball.position.y = nextY0 + BallHeight / 2;
+                ball.position.x += xDelta;
+                ball.position.y += yDelta;
             }
 
             for(var i = ballsToRemove.length - 1; i >= 0; --i) {
@@ -328,7 +282,7 @@
 
         function gameLoop() {
             var now = Date.now();
-            var dt = now - lastTime;
+            dt = (Math.min(now - lastTime, FrameTime) / FrameTime);
             // Logic
             if (isDown[Space] && !wasDown[Space]) {
                 var pp = paddle.position;
@@ -338,8 +292,8 @@
                 ), randomUpwardsVecotor()) );
             }
             // simulate
-            updatePaddle(dt / FrameTime);
-            updateBalls (dt / FrameTime);
+            updatePaddle();
+            updateBalls ();
             // draw
             drawBackground();
             drawPaddle();
