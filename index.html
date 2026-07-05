@@ -3,7 +3,9 @@
     <title>SJW Break</title>
 </head>
 <body>
-
+    <audio id="bounce" preload="auto">
+        <source src="ogg/bounce.ogg" type="audio/ogg">
+    </audio>
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
         <p> Art by <a href="https://www.kenney.nl">Kenney.nl</a></p>
@@ -69,6 +71,8 @@
         var PaddleImage = new Image();
         BallImage.src   = "png/ballGrey.png";
         PaddleImage.src = "png/paddleBlu.png";
+
+        var Bounce = document.getElementById('bounce');
 
         var Canvas = document.getElementById('game');
         var Ctx = Canvas.getContext('2d');
@@ -164,7 +168,7 @@
         function addBrick () {
             var y = 450;
             var xs = [60, 120, 180];
-            for(int i = 0; i < xs.length; i++)
+            for(var i = 0; i < xs.length; i++)
             {
                 bricks.push(ProtoBrick.newBrick(new vec2(y, xs[i])));
             }
@@ -198,6 +202,12 @@
             {
                 isDown[Space] = false;
             }
+        }
+
+        function playSound(sound) {
+            sound.pause(); // Reset durch Pausieren
+            sound.currentTime = 0;
+            sound.play();
         }
 
         function drawObj(gameObj) {
@@ -285,6 +295,7 @@
                 }
                 if (bb.y0 <= pb.y1 && bb.y1 > Border) {
                     if (bb.x0 >= pb.x0 && bb.x1 <= pb.x1) {
+                        playSound(Bounce);
                         // direct velocity upwards
                         ball.velocity.y = Math.abs(ball.velocity.y) + 0.3 * Math.abs(paddle.velocity.x);
                         ball.velocity.x = ball.velocity.x + 0.3 * paddle.velocity.x;
