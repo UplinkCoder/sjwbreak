@@ -44,7 +44,7 @@
         },
 
         toString: function () {
-            var vector = this.toPrecision(1);
+            var vector = this;
             return ("[" + vector.x + "; " + vector.y + "]");
         }
     };
@@ -62,7 +62,7 @@
         
         var PaddleSpeed    = 15;
         var PaddleWidth    = CanvasWidth * 0.1;
-        var PaddleHeight   = 10;
+        var PaddleHeight   = 12;
         var FrameTime      = 33; //Target ~30 FPS
 
         var BallImage   = new Image();
@@ -93,12 +93,19 @@
         var Right = 2;
         var Space = 3;
 
-        function game_obj_t(position, velocity) {
-            this.position = position;
-            this.velocity = velocity;
+        function game_obj_t(position, velocity, size, imageOrColorString) {
+            this.position            = position;
+            this.velocity            = velocity;
+            this.size                = size;
+            this.imageOrColorString  = imageOrColorString;
         };
 
-        game_obj_t.prototype = {};
+        game_obj_t.prototype = {
+            clone: function() {
+                return new vec2(this.x, this.y);
+            },
+
+        };
 
         var isDown = [];
         var wasDown = [];
@@ -108,8 +115,26 @@
         var lastTime = Date.now();
         var dt = 0;
 
-        var paddle = new game_obj_t( new vec2(CanvasWidth / 2, (PaddleHeight / 2) + Border), new vec2(0,0));
+        var paddle = new game_obj_t( 
+            new vec2 (CanvasWidth / 2, (PaddleHeight / 2) + Border), 
+            new vec2(0,0), 
+            new vec2(PaddleWidth, PaddleHeight),
+            PaddleImage
+        );
 
+        var ProtoBall = {
+            size: new vec2(BallWidth, BallHeight),
+            imageOrColorString: BallImage,
+
+            newBall: function (position, velocity) {
+                return new game_obj_t(
+                    position,
+                    velocity,
+                    this.size,                 // shared
+                    this.imageOrColorString    // shared
+                );
+            }
+        };
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
         var Space_Key      = 32;
@@ -154,33 +179,37 @@
             }
         }
 
+        function drawObj(gameObj) {
+            var p = gameObj.position;
+            var sz = gameObj.size;
+            var x0 = p.x - sz.x / 2;
+            var y0 = p.y - sz.y / 2;
+            if (gameObj.imageOrColorString instanceof Image)
+            {
+                Ctx.drawImage(gameObj.imageOrColorString, x0, y0, sz.x, sz.y);
+            }
+            else
+            {
+                Ctx.fillStyle = gameObj.imageOrColorString;
+                Ctx.fillRect(x0, y0, sz.x, sz.y);
+            }
+        };
+
         function drawPaddle() {
-            Ctx.fillStyle = 'rgb(200, 160, 110)';
-            // positions are centroids
-            var pp = paddle.position;
-            var leftX   = pp.x - (PaddleWidth  / 2);
-            var bottomY = pp.y - (PaddleHeight / 2);
-            Ctx.drawImage(PaddleImage, leftX, bottomY, PaddleWidth, PaddleHeight);
-            // Ctx.fillRect(leftX, bottomY, PaddleWidth, PaddleHeight);
+            drawObj(paddle);
         }
 
         function drawBalls() {
-            var ballColor = 'rgb(100, 180, 120)';
-            Ctx.fillStyle = ballColor;
             for(var i = 0; i < balls.length; i++)
             {
                 var ball = balls[i];
-                var posBall = ball.position;
-                var leftX   = posBall.x - (BallWidth  / 2);
-                var bottomY = posBall.y - (BallHeight / 2);
-                Ctx.drawImage(BallImage, leftX, bottomY, BallWidth, BallHeight);   
-                 //Ctx.fillRect(leftX, bottomY, BallWidth, BallHeight);
+                drawObj(ball);
             }
         }
 
-        function getBounds(gameObj, width, height) {
-            var halfWidth = width/2;
-            var halfHeight = height/2;
+        function getBounds(gameObj) {
+            var halfWidth  = gameObj.size.x / 2;
+            var halfHeight = gameObj.size.y / 2;
             return { x0 : gameObj.position.x - halfWidth,
                   x1 : gameObj.position.x + halfWidth,
                   y0 : gameObj.position.y - halfHeight,
@@ -218,11 +247,11 @@
 
         function updateBalls() {
             var ballsToRemove = [];
-            var pb = getBounds(paddle, PaddleWidth, PaddleHeight);
+            var pb = getBounds(paddle);
 
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                var bb = getBounds(ball, BallWidth, BallHeight);
+                var bb = getBounds(ball);
         
                 if (bb.x0 <= Border) {
                     ball.velocity.x = Math.abs(ball.velocity.x);
@@ -264,7 +293,7 @@
             }
         }
 
-        function randomUpwardsVecotor() {
+        function randomUpwardsVector() {
             var sectorAngle = Math.PI / 2.25;
             var startAngle  = (Math.PI / 2) - sectorAngle;
             var endAngle    = (Math.PI / 2) + sectorAngle;
@@ -286,10 +315,10 @@
             // Logic
             if (isDown[Space] && !wasDown[Space]) {
                 var pp = paddle.position;
-                balls.push(new game_obj_t (new vec2(
-                    pp.x + PaddleWidth/2  - BallWidth/2,
-                    pp.y + PaddleHeight/2 - BallHeight/2
-                ), randomUpwardsVecotor()) );
+                balls.push(ProtoBall.newBall(new vec2(
+                    pp.x,
+                    pp.y + PaddleHeight/2
+                ), randomUpwardsVector()));
             }
             // simulate
             updatePaddle();
