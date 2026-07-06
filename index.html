@@ -13,7 +13,7 @@
         <p id="pTag2"></p>
     </div>
     <script type = "text/javascript">
-    // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
+    // Copied vector class from: https://gist.githubbB.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
     function vec2(x, y) {
         this.x = (x === undefined) ? 0 : x;
         this.y = (y === undefined) ? 0 : y;
@@ -54,14 +54,14 @@
     <script type="text/javascript">
         var CanvasWidth    = 800;
         var CanvasHeight   = 600;
-        var Border         = 8;
+        var BorderWidth    = 8;
         var BallSpeed      = 8;
         var BallWidth      = 10;
         var BallHeight     = 10;
 
         var BrickWidth     = 40;
         var BrickHeight    = 15;
-        
+
         var PaddleSpeed    = 15;
         var PaddleWidth    = CanvasWidth * 0.1;
         var PaddleHeight   = 12;
@@ -97,11 +97,31 @@
         var Right = 2;
         var Space = 3;
 
-        function game_obj_t(position, velocity, size, imageOrColorString) {
+        function game_obj_t(position, velocity, size, imageOrColorString, onHit) {
             this.position            = position;
             this.velocity            = velocity;
             this.size                = size;
             this.imageOrColorString  = imageOrColorString;
+            this.onHit               = onHit;
+        };
+
+        function getBounds(gameObj) {
+            var halfWidth  = gameObj.size.x / 2;
+            var halfHeight = gameObj.size.y / 2;
+            return {
+                x0 : gameObj.position.x - halfWidth,
+                x1 : gameObj.position.x + halfWidth,
+                y0 : gameObj.position.y - halfHeight,
+                y1 : gameObj.position.y + halfHeight
+            };
+        }
+
+        function collides(objA, objB) {
+            var bbA = getBounds(objA);
+            var bbB = getBounds(objB);
+
+            return (bbA.x0 <= bbB.x1 && bbA.x1 >= bbB.x0 &&
+                bbA.y0 <= bbB.y1 && bbA.y1 >= bbB.y0);
         };
 
         game_obj_t.prototype = {
@@ -110,25 +130,25 @@
                     this.position.clone(),
                     this.velocity.clone(),
                     this.size.clone(),
-                    this.imageOrColorString
+                    this.imageOrColorString,
+                    this.onHit
                 );
             }
         };
 
-        var isDown = [];
-        var wasDown = [];
-        var balls = [];
-        var bricks = [];
-        var gameRunning = 0; // Test variable
-        var lastTime = Date.now();
-        var dt = 0;
+        var ProtoBorder = {
+            imageOrColorString: "rgb(160, 30, 160)",
+            velocity: new vec2(0, 0),
 
-        var paddle = new game_obj_t( 
-            new vec2 (CanvasWidth / 2, (PaddleHeight / 2) + Border), 
-            new vec2(0,0), 
-            new vec2(PaddleWidth, PaddleHeight),
-            PaddleImage
-        );
+            newBorder: function (position, size) {
+                return new game_obj_t(
+                    position,
+                    this.velocity,
+                    size,
+                    this.imageOrColorString
+                );
+            }
+        };
 
         var ProtoBall = {
             size: new vec2(BallWidth, BallHeight),
@@ -138,8 +158,8 @@
                 return new game_obj_t(
                     position,
                     velocity,
-                    this.size,                 // shared
-                    this.imageOrColorString    // shared
+                    this.size,
+                    this.imageOrColorString
                 );
             }
         };
@@ -158,6 +178,31 @@
                 );
             }
         };
+
+        var isDown  = [];
+        var wasDown = [];
+        var balls = [];
+        var bricks = [];
+        var colliders = [];
+        var gameRunning = 0; // Test variable
+        var lastTime = Date.now();
+        var dt = 0;
+
+        var paddle = new game_obj_t(
+            new vec2 (CanvasWidth / 2, (PaddleHeight / 2) + BorderWidth),
+            new vec2(0,0),
+            new vec2(PaddleWidth, PaddleHeight),
+            PaddleImage
+        );
+        var HorizontalBorderSize = new vec2(BorderWidth, CanvasHeight);
+        var VerticalBorderSize   = new vec2(CanvasWidth, BorderWidth);
+        var leftBorder   = ProtoBorder.newBorder(new vec2(              BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
+        var rightBorder  = ProtoBorder.newBorder(new vec2(CanvasWidth - BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
+        var topBorder    = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2, CanvasHeight - BorderWidth/2), VerticalBorderSize);
+        var bottomBorder = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2,                BorderWidth/2), VerticalBorderSize);
+        colliders.push(leftBorder);
+        colliders.push(rightBorder);
+        colliders.push(topBorder);
 
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
@@ -242,15 +287,12 @@
             }
         }
 
-        function getBounds(gameObj) {
-            var halfWidth  = gameObj.size.x / 2;
-            var halfHeight = gameObj.size.y / 2;
-            return {
-                x0 : gameObj.position.x - halfWidth,
-                x1 : gameObj.position.x + halfWidth,
-                y0 : gameObj.position.y - halfHeight,
-                y1 : gameObj.position.y + halfHeight
-            };
+        function drawColliders() {
+            for(var i = 0; i < colliders.length; i++)
+            {
+                var collider = colliders[i];
+                drawObj(collider);
+            }
         }
 
         function updatePaddle() {
@@ -272,12 +314,12 @@
             pp.x = pp.x + xDelta;
 
             document.getElementById('pTag').innerHTML = "Paddle: X: " + pp.x.toString() + " Y: " + pp.y.toString();
-            if (pp.x > CanvasWidth - (PaddleWidth/2 + Border)) {
-                pp.x = CanvasWidth - (PaddleWidth/2 + Border);
+            if (pp.x > CanvasWidth - (PaddleWidth/2 + BorderWidth)) {
+                pp.x = CanvasWidth - (PaddleWidth/2 + BorderWidth);
                 pv.x = 0;
             }
-            if (pp.x < PaddleWidth/2 + Border) {
-                pp.x = PaddleWidth/2 + Border;
+            if (pp.x < PaddleWidth/2 + BorderWidth) {
+                pp.x = PaddleWidth/2 + BorderWidth;
                 pv.x = 0;
             }
         }
@@ -289,27 +331,29 @@
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
                 var bb = getBounds(ball);
-        
-                if (bb.x0 <= Border) {
+
+                if (bb.x0 <= BorderWidth) {
+                    playSound(Bounce);
                     ball.velocity.x = Math.abs(ball.velocity.x);
                 }
-                if (bb.x1 >= (CanvasWidth - Border)) {
+                if (bb.x1 >= (CanvasWidth - BorderWidth)) {
+                    playSound(Bounce);
                     ball.velocity.x = -Math.abs(ball.velocity.x)
                 }
-                if (bb.y1 >= (CanvasHeight - Border)) {
+
+                if (bb.y1 >= (CanvasHeight - BorderWidth)) {
+                    playSound(Bounce);
                     ball.velocity.y = -Math.abs(ball.velocity.y);
                 }
-                if (bb.y0 <= pb.y1 && bb.y1 > Border) {
-                    if (bb.x0 >= pb.x0 && bb.x1 <= pb.x1) {
-                        playSound(Bounce);
-                        // direct velocity upwards
-                        ball.velocity.y = Math.abs(ball.velocity.y) + 0.3 * Math.abs(paddle.velocity.x);
-                        ball.velocity.x = ball.velocity.x + 0.3 * paddle.velocity.x;
-                        ball.velocity = ball.velocity.normalize();
-                    }
+                if (collides(ball, paddle)) {
+                    playSound(Bounce);
+                    // direct velocity upwards
+                    ball.velocity.y = Math.abs(ball.velocity.y) + 0.5 * Math.abs(paddle.velocity.x);
+                    ball.velocity.x = ball.velocity.x + 0.5 * paddle.velocity.x;
+                    ball.velocity = ball.velocity.normalize();
                 }
                 // if ball y1 position is under border destroy
-                if (bb.y1 <= Border) {
+                if (bb.y1 <= BorderWidth) {
                     ballsToRemove.push(i);
                 }
                 var bDelta = BallSpeed * dt;
@@ -360,6 +404,7 @@
             drawBackground();
             drawPaddle();
             drawBalls();
+            drawColliders();
 
             // update old state for delta
             lastTime = now;
