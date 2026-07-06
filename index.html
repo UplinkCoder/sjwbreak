@@ -6,6 +6,7 @@
     <audio id="bounce" preload="auto">
         <source src="ogg/bounce.ogg" type="audio/ogg">
     </audio>
+    <p id="score"> Score: 0 </p> 
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
         <p> Art by <a href="https://www.kenney.nl">Kenney.nl</a></p>
@@ -97,6 +98,8 @@
         var Right = 2;
         var Space = 3;
 
+        var Score = 0;
+
         function game_obj_t(position, velocity, size, imageOrColorString, onHit) {
             this.position            = position;
             this.velocity            = velocity;
@@ -133,7 +136,6 @@
         function applyVelocityChangeAfterCollisionWith(ball, brick) {
             var brickBounds = getBounds(brick);
             var ballP = ball.position;
-            var resultVelocity;
 
             var distFromBottom = Math.abs(ballP.y - brickBounds.y0);
             var distFromTop    = Math.abs(ballP.y - brickBounds.y1);
@@ -197,20 +199,38 @@
             imageOrColorString: "rgb(200, 60, 30)",
 
             newBrick: function (position) {
-                return new game_obj_t(
+                var b = new game_obj_t(
                     position,
                     this.velocity,
                     this.size,
-                    this.imageOrColorString
+                    this.imageOrColorString,
+                    function () {
+                        playSound(Bounce);
+                        Score += 20;
+                        collidersToRemove.push(colliders.indexOf(b));
+                    }
                 );
+                return b;
             }
         };
 
+        var HorizontalBorderSize = new vec2(BorderWidth, CanvasHeight);
+        var VerticalBorderSize   = new vec2(CanvasWidth, BorderWidth);
+        var LeftBorder   = ProtoBorder.newBorder(new vec2(              BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
+        var RightBorder  = ProtoBorder.newBorder(new vec2(CanvasWidth - BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
+        var TopBorder    = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2, CanvasHeight - BorderWidth/2), VerticalBorderSize);
+        var BottomBorder = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2,                BorderWidth/2), VerticalBorderSize);
+
+        // input state
         var isDown  = [];
         var wasDown = [];
+
+        // gameState
         var balls = [];
         var bricks = [];
         var colliders = [];
+        var collidersToRemove = [];
+
         var gameRunning = 0; // Test variable
         var lastTime = Date.now();
         var dt = 0;
@@ -221,15 +241,10 @@
             new vec2(PaddleWidth, PaddleHeight),
             PaddleImage
         );
-        var HorizontalBorderSize = new vec2(BorderWidth, CanvasHeight);
-        var VerticalBorderSize   = new vec2(CanvasWidth, BorderWidth);
-        var leftBorder   = ProtoBorder.newBorder(new vec2(              BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
-        var rightBorder  = ProtoBorder.newBorder(new vec2(CanvasWidth - BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
-        var topBorder    = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2, CanvasHeight - BorderWidth/2), VerticalBorderSize);
-        var bottomBorder = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2,                BorderWidth/2), VerticalBorderSize);
-        colliders.push(leftBorder);
-        colliders.push(rightBorder);
-        colliders.push(topBorder);
+
+        colliders.push(LeftBorder);
+        colliders.push(RightBorder);
+        colliders.push(TopBorder);
 
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
@@ -241,14 +256,16 @@
             wasDown[key] = false;
         }
 
-        function addBrick () {
+        function addBricks () {
             var y = 450;
-            var xs = [60, 120, 180];
+            var xs = [60, 120, 180, 240, 300];
             for(var i = 0; i < xs.length; i++)
             {
-                bricks.push(ProtoBrick.newBrick(new vec2(y, xs[i])));
+                colliders.push(ProtoBrick.newBrick(new vec2(xs[i], y)));
             }
+            // colliders.push(...bricks);
         }
+        addBricks();
 
         window.onkeydown = function(e) {
             if (e.keyCode == LeftArrow_Key)
@@ -366,6 +383,7 @@
                     if (collides(ball, c))
                     {
                         playSound(Bounce);
+                        if (c.onHit !== undefined) { c.onHit(); }
                         applyVelocityChangeAfterCollisionWith(ball, c);
                         break;
                     }
@@ -432,14 +450,23 @@
             drawPaddle();
             drawBalls();
             drawColliders();
-
+            document.getElementById('score').innerHTML = "Score: " + Score.toString();
+            for(var i = collidersToRemove.length - 1; i >= 0; --i) {
+                var ci = collidersToRemove[i];
+                colliders.splice(ci, 1);
+            }
+            collidersToRemove = [];
             // update old state for delta
             lastTime = now;
             for (var i = 0; i < Keys.length; i++) {
                 wasDown[Keys[i]] = isDown[Keys[i]];
             }
         }
-        setInterval(gameLoop, FrameTime);
+        var gameInterval = setInterval(gameLoop, FrameTime);
+
+        window.onbeforeunload = function() {
+            clearInterval(gameInterval);
+        };
     </script>
 
 </body>
