@@ -126,11 +126,63 @@
                     bbA.y0 <= bbB.y1 && bbA.y1 >= bbB.y0);
         };
 /*
-        function applyVelocityAfterCollision(objA, objB) {
-            var normal = new vec2(objB.position.x - objA.position.x,
-                                  objB.position.y - objA.position.y).normalize();
-        }
+        AI generated template:
+        // Verbindung der Mittelpunkte bestimmen
+        normale = normalize(B.position - A.position)
+
+        // Tangente zur Normalen bestimmen
+        tangente = (-normale.y, normale.x)
+
+        // Geschwindigkeiten in Normal- und Tangentialanteil zerlegen
+        A_normal     = dot(A.velocity, normale)
+        A_tangential = dot(A.velocity, tangente)
+
+        B_normal     = dot(B.velocity, normale)
+        B_tangential = dot(B.velocity, tangente)
+
+        // Bei gleicher Masse:
+        // Normalanteile tauschen
+        temp = A_normal
+        A_normal = B_normal
+        B_normal = temp
+
+        // Neue Geschwindigkeiten zusammensetzen
+        A.velocity =
+              normale  * A_normal
+            + tangente * A_tangential
+
+        B.velocity =
+              normale  * B_normal
+            + tangente * B_tangential
 */
+        function applyVelocityAfterBallOnBallCollision(objA, objB) {
+
+            var normalX      = objB.position.x - objA.position.x;
+            var normalY      = objB.position.y - objA.position.y;
+            var normalLength = Math.sqrt(normalX * normalX + normalY * normalY);
+
+            normalX /= normalLength;
+            normalY /= normalLength;
+
+            var tangentX = -normalY;
+            var tangentY = normalX;
+
+            var contributionA = objA.velocity.x * normalX  + objA.velocity.y * normalY;
+            var contributionB = objB.velocity.x * normalX  + objB.velocity.y * normalY;
+
+            var retainedA     = objA.velocity.x * tangentX + objA.velocity.y * tangentY;
+            var retainedB     = objB.velocity.x * tangentX + objB.velocity.y * tangentY;
+
+            objA.velocity.x = contributionB * normalX + retainedA * tangentX;
+            objA.velocity.y = contributionB * normalY + retainedA * tangentY;
+
+            objB.velocity.x = contributionA * normalX + retainedB * tangentX;
+            objB.velocity.y = contributionA * normalY + retainedB * tangentY;
+
+            objA.velocity = objA.velocity.normalize();
+            objB.velocity = objB.velocity.normalize();
+        }
+
 
         function applyVelocityChangeAfterCollisionWith(ball, brick) {
             var brickBounds = getBounds(brick);
@@ -382,6 +434,15 @@
                         if (c.onHit !== undefined) { c.onHit(); }
                         applyVelocityChangeAfterCollisionWith(ball, c);
                         break;
+                    }
+                }
+
+                for (var bIndex = i + 1; bIndex < balls.length; bIndex++)
+                {
+                    var otherBall = balls[bIndex];
+                    if (collides(ball, otherBall))
+                    {
+                        applyVelocityAfterBallOnBallCollision(ball, otherBall);
                     }
                 }
 
