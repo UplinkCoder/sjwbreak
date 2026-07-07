@@ -6,12 +6,11 @@
     <audio id="bounce" preload="auto">
         <source src="ogg/bounce.ogg" type="audio/ogg">
     </audio>
-    <p id="score"> Score: 0 </p> 
+    <p id="score"> Score: 0 </p>
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
         <p> Art by <a href="https://www.kenney.nl">Kenney.nl</a></p>
         <p id="pTag"></p>
-        <p id="pTag2"></p>
     </div>
     <script type = "text/javascript">
     // Copied vector class from: https://gist.github.com/Dalimil/3daf2a0c531d7d030deb37a7bfeff454
@@ -77,8 +76,8 @@
 
         var Canvas = document.getElementById('game');
         var Ctx = Canvas.getContext('2d');
-        function pTag2(content) {
-            document.getElementById('pTag2').innerHTML = content;
+        function pTag(content) {
+            document.getElementById('pTag').innerHTML = content;
         }
         // switch to right handed coordinates
         Ctx.translate(0, CanvasHeight);
@@ -150,7 +149,7 @@
                 case distFromLeft:  { ball.velocity.x = -Math.abs(ball.velocity.x) } break;
                 case distFromRight: { ball.velocity.x =  Math.abs(ball.velocity.x) } break;
             }
-            // pTag2("BallVelocity: " + ball.velocity.toString() );
+            // pTag("BallVelocity: " + ball.velocity.toString() );
         }
 
         game_obj_t.prototype = {
@@ -227,13 +226,8 @@
 
         // gameState
         var balls = [];
-        var bricks = [];
         var colliders = [];
         var collidersToRemove = [];
-
-        var gameRunning = 0; // Test variable
-        var lastTime = Date.now();
-        var dt = 0;
 
         var paddle = new game_obj_t(
             new vec2 (CanvasWidth / 2, (PaddleHeight / 2) + BorderWidth),
@@ -241,6 +235,10 @@
             new vec2(PaddleWidth, PaddleHeight),
             PaddleImage
         );
+
+        var gameRunning = 0; // Test variable
+        var lastTime = Date.now();
+        var dt = 0;
 
         colliders.push(LeftBorder);
         colliders.push(RightBorder);
@@ -258,12 +256,11 @@
 
         function addBricks () {
             var y = 450;
-            var xs = [60, 120, 180, 240, 300];
-            for(var i = 0; i < xs.length; i++)
+
+            for(var x = 60; x < CanvasWidth - 60; x += 60)
             {
-                colliders.push(ProtoBrick.newBrick(new vec2(xs[i], y)));
+                colliders.push(ProtoBrick.newBrick(new vec2(x, y)));
             }
-            // colliders.push(...bricks);
         }
         addBricks();
 
@@ -298,7 +295,7 @@
         }
 
         function playSound(sound) {
-            sound.pause(); // Reset durch Pausieren
+            if (sound.playing) sound.pause(); // Reset durch Pausieren
             sound.currentTime = 0;
             sound.play();
         }
@@ -357,7 +354,6 @@
             }
             pp.x = pp.x + xDelta;
 
-            document.getElementById('pTag').innerHTML = "Paddle: X: " + pp.x.toString() + " Y: " + pp.y.toString();
             if (pp.x > CanvasWidth - (PaddleWidth/2 + BorderWidth)) {
                 pp.x = CanvasWidth - (PaddleWidth/2 + BorderWidth);
                 pv.x = 0;
@@ -390,9 +386,15 @@
                 }
 
                 if (collides(ball, paddle)) {
+                    var paddleX0 = (paddle.position.x - PaddleWidth/2);
+                    var t = 1 - ((ball.position.x - paddleX0) / PaddleWidth);
+
                     playSound(Bounce);
-                    applyVelocityChangeAfterCollisionWith(ball, paddle);
+                    // applyVelocityChangeAfterCollisionWith(ball, paddle);
+                    ball.velocity = upwardsVector(t);
+                    // pTag("Ball.v: " + ball.velocity.toString());
                     // direct velocity upwards
+                    // point on the paddle that the collision occured at from [0 to 1]
                     ball.velocity.y += 0.5 * Math.abs(paddle.velocity.x);
                     ball.velocity.x += 0.5 * paddle.velocity.x;
                     ball.velocity = ball.velocity.normalize();
@@ -412,15 +414,17 @@
             for(var i = ballsToRemove.length - 1; i >= 0; --i) {
                 var bi = ballsToRemove[i];
                 balls.splice(bi, 1);
+                Score -= 40;
             }
         }
 
-        function randomUpwardsVector() {
+        function upwardsVector(tAngle) {
+            // tAngle should be a value from 0 to 1 which tells us how far to go along the upwards cone.
             var sectorAngle = Math.PI / 2.25;
             var startAngle  = (Math.PI / 2) - sectorAngle;
             var endAngle    = (Math.PI / 2) + sectorAngle;
-            var randomAngle = startAngle + (Math.random() * (endAngle - startAngle));
-            var ballDirection = new vec2(Math.cos(randomAngle), Math.sin(randomAngle));
+            var launchAngle = startAngle + (tAngle * (endAngle - startAngle));
+            var ballDirection = new vec2(Math.cos(launchAngle), Math.sin(launchAngle));
             return ballDirection.normalize();
         }
 
@@ -436,11 +440,16 @@
             dt = (Math.min(now - lastTime, FrameTime) / FrameTime);
             // Logic
             if (isDown[Space] && !wasDown[Space]) {
+                var randomT = Math.random();
                 var pp = paddle.position;
-                balls.push(ProtoBall.newBall(new vec2(
-                    pp.x,
-                    pp.y + PaddleHeight/2
-                ), randomUpwardsVector()));
+                var direction = upwardsVector(randomT);
+                // pTag("launchDirection: " + direction.toString() + " --- randomT: " + randomT.toString());
+                balls.push(
+                    ProtoBall.newBall(new vec2(
+                        pp.x,
+                        pp.y + PaddleHeight/2 + BallWidth/2 + 0.01
+                    ), direction)
+                );
             }
             // simulate
             updatePaddle();
