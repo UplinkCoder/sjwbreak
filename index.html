@@ -7,6 +7,7 @@
         <source src="ogg/bounce.ogg" type="audio/ogg">
     </audio>
     <p id="score" style="color:white;position:absolute;left:20px;top:20px"> Score: 0 </p>
+    <p id="balls" style="color:white;position:absolute;left:200px;top:20px"> Balls: 0 </p>
     <canvas id="game" width="800" height="600" style="Border:1px solid #000;"></canvas>
     <div>
         <p> Art by <a href="https://www.kenney.nl">Kenney.nl</a></p>
@@ -50,6 +51,84 @@
             return ("[" + vector.x.toFixed(2) + "; " + vector.y.toFixed(2) + "]");
         }
     };
+    </script>
+    <script type="text/javascript">
+        function grid_2d_t (width, height)
+        {
+            this.cellCount = 256;
+            this.width     = width  | 0;
+            this.height    = height | 0;
+            this.cells     = [];
+            this.clearGrid();
+        }
+
+        grid_2d_t.prototype = {
+            hashXY: function (x, y) {
+                return ((x * 33 + y * 11)| 0) & 0xFF;
+            },
+
+            at: function (x, y) {
+                var result = [];
+                var candidates = this.cells[this.hashXY(x, y)];
+                if (candidates.length > 0) {
+                    for(var i = 0; i < candidates.length; i++) {
+                        var c = candidates[i];
+                        if (c.x == x && c.y == y) {
+                            result.push(c.obj);
+                        }
+                    }
+                }
+                return result;
+            },
+
+            atPut: function (x, y, obj) {
+                return this.cells[this.hashXY(x, y)].push( {x: x, y: y, obj: obj } );
+            },
+
+            clearGrid: function () {
+                for(var i = 0; i < this.cellCount; i++) {
+                    this.cells[i] = [];
+                }
+            },
+
+            getNeighborhood: function (x, y) {
+            /*
+                [x-1,y-1 | x, y-1, | x+1, y-1 ]
+                [x-1,  y | x,   y  | x+1,   y ]
+                [x-1,y+1 | x, y+1, | x+1, y+1 ]
+            */
+                var H = this.height;
+                var W = this.width;
+                var result = [];
+
+                var c00 = (x>=1 && y >= 1 ? this.at(x-1, y-1) : []);
+                var c01 = (x>=1           ? this.at(x-1,   y) : []);
+                var c02 = (x>=1 && y < H  ? this.at(x-1, y+1) : []);
+
+                for(var i = 0; i < c00.length; i++) { result.push(c00[i]); }
+                for(var i = 0; i < c01.length; i++) { result.push(c01[i]); }
+                for(var i = 0; i < c02.length; i++) { result.push(c02[i]); }
+
+                var c10 = (        y >= 1 ? this.at(x   , y-1) : []);
+                var c11 = (                 this.at(x   ,   y)     );
+                var c12 = (        y < H  ? this.at(x   , y+1) : []);
+
+                for(var i = 0; i < c10.length; i++) { result.push(c10[i]); }
+                for(var i = 0; i < c11.length; i++) { result.push(c11[i]); }
+                for(var i = 0; i < c12.length; i++) { result.push(c12[i]); }
+
+                var c20 = (x < W && y >= 1 ? this.at(x+1, y-1) : []);
+                var c21 = (x < W           ? this.at(x+1,   y) : []);
+                var c22 = (x < W && y < H  ? this.at(x+1, y+1) : []);
+
+                for(var i = 0; i < c20.length; i++) { result.push(c20[i]); }
+                for(var i = 0; i < c21.length; i++) { result.push(c21[i]); }
+                for(var i = 0; i < c22.length; i++) { result.push(c22[i]); }
+
+                return result;
+
+            }
+        };
     </script>
     <script type="text/javascript">
         var CanvasWidth    = 800;
@@ -181,6 +260,13 @@
 
             objA.velocity = objA.velocity.normalize();
             objB.velocity = objB.velocity.normalize();
+
+            objA.position.x -= normalX;
+            objA.position.y -= normalY;
+
+            objB.position.x += normalX;
+            objB.position.y += normalY;
+
         }
 
 
@@ -295,6 +381,7 @@
         colliders.push(LeftBorder);
         colliders.push(RightBorder);
         colliders.push(TopBorder);
+        colliders.push(BottomBorder);
 
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
@@ -373,6 +460,7 @@
         }
 
         function drawBalls() {
+            document.getElementById('balls').innerHTML = "Balls: " + balls.length.toString();
             for(var i = 0; i < balls.length; i++)
             {
                 var ball = balls[i];
@@ -419,14 +507,36 @@
         function updateBalls() {
             var ballsToRemove = [];
             var pb = getBounds(paddle);
+            var GridWidth  = (CanvasWidth  / 20) | 0;
+            var GridHeight = (CanvasHeight / 20) | 0;
+
+            var collisionGrid = new grid_2d_t(GridWidth, GridHeight);
 
             for(var i = 0; i < balls.length; i++) {
                 var ball = balls[i];
-                var bb = getBounds(ball);
-                // var possibleColliders = getColliders(collsionGrid, bb);
+                var bPos = ball.position;
 
-                for(var cIndex = 0; cIndex < colliders.length; cIndex++)
-                {
+                var bNormX = Math.floor(bPos.x) / CanvasWidth;
+                var bNormY = Math.floor(bPos.y) / CanvasHeight;
+                var gX = Math.floor(bNormX * GridWidth);
+                var gY = Math.floor(bNormY * GridHeight);
+
+                collisionGrid.atPut(gX, gY, ball);
+            }
+
+            for(var i = 0; i < balls.length; i++) {
+
+                var ball = balls[i];
+                var bb   = getBounds(ball);
+                var bPos = ball.position;
+
+                var bNormX = Math.floor(bPos.x) / CanvasWidth;
+                var bNormY = Math.floor(bPos.y) / CanvasHeight;
+                var gX = Math.floor(bNormX * GridWidth);
+                var gY = Math.floor(bNormY * GridHeight);
+
+                // check against bricks and bounderies
+                for(var cIndex = 0; cIndex < colliders.length; cIndex++) {
                     var c = colliders[cIndex];
                     if (collides(ball, c))
                     {
@@ -436,13 +546,17 @@
                         break;
                     }
                 }
+                // now check agianst balls
+                var possibleColliders = collisionGrid.getNeighborhood(gX, gY);
 
-                for (var bIndex = i + 1; bIndex < balls.length; bIndex++)
-                {
-                    var otherBall = balls[bIndex];
-                    if (collides(ball, otherBall))
+                for (var pcIndex = 0; pcIndex < possibleColliders.length; pcIndex++) {
+                    var otherBall = possibleColliders[pcIndex];
+                    if (otherBall != ball)
                     {
-                        applyVelocityAfterBallOnBallCollision(ball, otherBall);
+                        if (collides(ball, otherBall))
+                        {
+                            applyVelocityAfterBallOnBallCollision(ball, otherBall);
+                        }
                     }
                 }
 
