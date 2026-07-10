@@ -459,8 +459,29 @@
             drawObj(paddle);
         }
 
+        var IfChanged = (function() {
+            var knownValues = {};
+
+            return function(variableName, onChange) {
+                var newValue = eval(variableName);
+                var oldValue = knownValues[variableName];
+
+                if (oldValue !== undefined) {
+                    if (oldValue === newValue) return;
+                }
+
+                // Execute the callback
+                onChange(newValue);
+
+                // Update the stored value
+                knownValues[variableName] = newValue;
+            };
+        })();
+
         function drawBalls() {
-            document.getElementById('balls').innerHTML = "Balls: " + balls.length.toString();
+            IfChanged("balls.length", function (vx) {
+                document.getElementById('balls').innerHTML = ("Balls: " + vx.toString());
+            });
             for(var i = 0; i < balls.length; i++)
             {
                 var ball = balls[i];
@@ -634,7 +655,9 @@
             drawPaddle();
             drawBalls();
             drawColliders();
-            document.getElementById('score').innerHTML = "Score: " + Score.toString();
+            IfChanged("Score", function(score) {
+                document.getElementById('score').innerHTML = "Score: " + score.toString()
+            });
             for(var i = collidersToRemove.length - 1; i >= 0; --i) {
                 var ci = collidersToRemove[i];
                 colliders.splice(ci, 1);
