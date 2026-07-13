@@ -101,25 +101,25 @@
                 var W = this.width;
                 var result = [];
 
-                var c00 = (x>=1 && y >= 1 ? this.at(x-1, y-1) : []);
-                var c01 = (x>=1           ? this.at(x-1,   y) : []);
-                var c02 = (x>=1 && y < H  ? this.at(x-1, y+1) : []);
+                var c00 = (x>=1 && y >= 1   ? this.at(x-1, y-1) : []);
+                var c01 = (x>=1             ? this.at(x-1,   y) : []);
+                var c02 = (x>=1 && y+1 < H  ? this.at(x-1, y+1) : []);
 
                 for(var i = 0; i < c00.length; i++) { result.push(c00[i]); }
                 for(var i = 0; i < c01.length; i++) { result.push(c01[i]); }
                 for(var i = 0; i < c02.length; i++) { result.push(c02[i]); }
 
-                var c10 = (        y >= 1 ? this.at(x   , y-1) : []);
-                var c11 = (                 this.at(x   ,   y)     );
-                var c12 = (        y < H  ? this.at(x   , y+1) : []);
+                var c10 = (          y >= 1 ? this.at(x   , y-1) : []);
+                var c11 = (                   this.at(x   ,   y)     );
+                var c12 = (        y+1 < H  ? this.at(x   , y+1) : []);
 
                 for(var i = 0; i < c10.length; i++) { result.push(c10[i]); }
                 for(var i = 0; i < c11.length; i++) { result.push(c11[i]); }
                 for(var i = 0; i < c12.length; i++) { result.push(c12[i]); }
 
-                var c20 = (x < W && y >= 1 ? this.at(x+1, y-1) : []);
-                var c21 = (x < W           ? this.at(x+1,   y) : []);
-                var c22 = (x < W && y < H  ? this.at(x+1, y+1) : []);
+                var c20 = (x+1 < W && y >= 1   ? this.at(x+1, y-1) : []);
+                var c21 = (x+1 < W             ? this.at(x+1,   y) : []);
+                var c22 = (x+1 < W && y+1 < H  ? this.at(x+1, y+1) : []);
 
                 for(var i = 0; i < c20.length; i++) { result.push(c20[i]); }
                 for(var i = 0; i < c21.length; i++) { result.push(c21[i]); }
