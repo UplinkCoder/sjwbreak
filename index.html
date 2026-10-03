@@ -353,10 +353,11 @@
 
         var HorizontalBorderSize = new vec2(BorderWidth, CanvasHeight);
         var VerticalBorderSize   = new vec2(CanvasWidth, BorderWidth);
+
         var LeftBorder   = ProtoBorder.newBorder(new vec2(              BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
         var RightBorder  = ProtoBorder.newBorder(new vec2(CanvasWidth - BorderWidth/2, CanvasHeight/2), HorizontalBorderSize);
         var TopBorder    = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2, CanvasHeight - BorderWidth/2), VerticalBorderSize);
-        var BottomBorder = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2,                BorderWidth/2), VerticalBorderSize);
+        // var BottomBorder    = ProtoBorder.newBorder(new vec2(CanvasWidth/2 - BorderWidth/2,               BorderWidth/2), VerticalBorderSize);
 
         // input state
         var isDown  = [];
@@ -381,7 +382,17 @@
         colliders.push(LeftBorder);
         colliders.push(RightBorder);
         colliders.push(TopBorder);
-        colliders.push(BottomBorder);
+        // BottomBorder removed to allow balls to fall through
+
+        var mouseX = undefined;
+        var canvas = document.getElementById('game');
+        canvas.onmousemove = function(e) {
+            var rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+        };
+        canvas.onmouseleave = function() {
+            mouseX = undefined;
+        };
 
         var LeftArrow_Key  = 37;
         var RightArrow_Key = 39;
@@ -513,8 +524,16 @@
             } else {
                 pv.x = 0;
             }
-            pp.x = pp.x + xDelta;
 
+            // Maussteuerung hinzufügen
+            if (mouseX !== undefined) {
+                pp.x = mouseX;
+                pv.x = 0; // Geschwindigkeit auf 0 setzen, da wir direkt positionieren
+            } else {
+                pp.x = pp.x + xDelta;
+            }
+
+            // Grenzen des Paddles einhalten
             if (pp.x > CanvasWidth - (PaddleWidth/2 + BorderWidth)) {
                 pp.x = CanvasWidth - (PaddleWidth/2 + BorderWidth);
                 pv.x = 0;
